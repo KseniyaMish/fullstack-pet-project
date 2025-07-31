@@ -1,5 +1,4 @@
 import requests
-import pytest
 import allure
 from utils.allure_helpers import attach_response, step_request, step_check_status, step_validate_body
 
@@ -8,7 +7,7 @@ BASE_URL = "http://localhost:8000"
 @allure.feature("Auth")
 @allure.title("Successful login returns token")
 def test_login_success():
-    payload = {"username": "admin", "password": "admin"}
+    payload = {"username": "user1", "password": "hashed_password"}
 
     with step_request("POST /auth/login"):
         response = requests.post(f"{BASE_URL}/auth/login", json=payload)
@@ -25,7 +24,7 @@ def test_login_success():
 
 
 @allure.feature("Users")
-@allure.title("Authorized user receives list of 10 users")
+@allure.title("Authorized user receives list of users from DB")
 def test_get_users():
     with allure.step("Login and get access token"):
         token = test_login_success()
@@ -42,8 +41,11 @@ def test_get_users():
     with step_validate_body():
         users = response.json()
         assert isinstance(users, list)
-        assert len(users) == 10
-
+        assert len(users) >= 10
+        for user in users:
+            assert isinstance(user["username"], str)
+            assert isinstance(user["email"], str)
+            assert "@" in user["email"]
 
 @allure.feature("Posts")
 @allure.title("Authorized user can create a post")
@@ -52,9 +54,19 @@ def test_create_post():
         token = test_login_success()
 
     headers = {"Authorization": f"Bearer {token}"}
-    post_data = {"title": "Test Post", "content": "Some content"}
 
-    with step_request("POST /posts-db/"):
+    # 🔍 Проверка, что пользователь есть в БД
+    with step_request("GET /users/ — убедиться, что user1 есть в списке"):
+        r = requests.get(f"{BASE_URL}/users/", headers=headers)
+        attach_response(r)
+        assert r.status_code == 200
+        users = r.json()
+        usernames = [u["username"] for u in users]
+        assert "user1" in usernames, "user1 не найден в базе пользователей"
+
+    # 📬 Создание поста
+    post_data = {"title": "Test Post", "content": "Some content"}
+    with step_request("POST /posts-db/ — создание поста"):
         response = requests.post(f"{BASE_URL}/posts-db/", headers=headers, json=post_data)
         attach_response(response)
 
@@ -65,3 +77,4 @@ def test_create_post():
         result = response.json()
         assert result["title"] == post_data["title"]
         assert result["content"] == post_data["content"]
+        assert "user_id" in result

@@ -81,7 +81,7 @@ bash
 Копировать
 Редактировать
 
-PYTHONPATH=. pytest tests/ --alluredir=allure-results
+pytest tests/ --alluredir=allure-results
 allure serve allure-results
 📌 Не забудь добавить файл tests/conftest.py, если возникают проблемы с импортами:
 

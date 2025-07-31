@@ -6,3 +6,7 @@ class PostCreate(BaseModel):
 
 class Post(PostCreate):
     id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
